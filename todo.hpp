@@ -8,86 +8,67 @@
 #define TODO( ... ) static_assert( true, "" )
 #else
 
+#include <string_view>
 namespace todo
 {
-   class ct_string
-   {
-      const char* const begin_;
-      const unsigned size_;
-
-   public:
-      template< unsigned N >
-      constexpr ct_string( const char ( &arr )[ N ] )
-         : begin_( arr ), size_( N - 1 )
-      {
-      }
-
-      constexpr unsigned size() const
-      {
-         return size_;
-      }
-
-      constexpr char operator[]( const unsigned i ) const
-      {
-         return begin_[ i ];
-      }
-   };
-
    constexpr unsigned check( const unsigned i, const unsigned l )
    {
       return ( i < l ) ? i : throw "out_of_range";
    }
 
-   constexpr unsigned digit( const ct_string s, const unsigned i )
+   constexpr unsigned digit( const std::string_view s, const unsigned i )
    {
-      return ( s[ i ] >= '0' && s[ i ] <= '9' ) ? ( s[ i ] - '0' ) : throw "invalid character";
+      if( s[ i ] < '0' || s[ i ] > '9' ) {
+         throw "invalid character";
+      }
+      return s[ i ] - '0';
    }
 
-   constexpr unsigned two( const ct_string s, const unsigned i )
+   constexpr unsigned two( const std::string_view s, const unsigned i )
    {
       return digit( s, i ) * 10 + digit( s, i + 1 );
    }
 
-   constexpr unsigned four( const ct_string s, const unsigned i )
+   constexpr unsigned four( const std::string_view s, const unsigned i )
    {
       return two( s, i ) * 100 + two( s, i + 2 );
    }
 
-   constexpr unsigned year_cpp( const ct_string s )
+   constexpr unsigned year_cpp( const std::string_view s )
    {
       return four( s, 7 );
    }
 
-   constexpr unsigned month_cpp( const ct_string s )
+   constexpr unsigned month_cpp( const std::string_view s )
    {
       // clang-format off
-      return ( s[ 0 ] == 'J' && s[ 1 ] == 'a' && s[ 2 ] == 'n' ) ? 0
-           : ( s[ 0 ] == 'F' && s[ 1 ] == 'e' && s[ 2 ] == 'b' ) ? 1
-           : ( s[ 0 ] == 'M' && s[ 1 ] == 'a' && s[ 2 ] == 'r' ) ? 2
-           : ( s[ 0 ] == 'A' && s[ 1 ] == 'p' && s[ 2 ] == 'r' ) ? 3
-           : ( s[ 0 ] == 'M' && s[ 1 ] == 'a' && s[ 2 ] == 'y' ) ? 4
-           : ( s[ 0 ] == 'J' && s[ 1 ] == 'u' && s[ 2 ] == 'n' ) ? 5
-           : ( s[ 0 ] == 'J' && s[ 1 ] == 'u' && s[ 2 ] == 'l' ) ? 6
-           : ( s[ 0 ] == 'A' && s[ 1 ] == 'u' && s[ 2 ] == 'g' ) ? 7
-           : ( s[ 0 ] == 'S' && s[ 1 ] == 'e' && s[ 2 ] == 'p' ) ? 8
-           : ( s[ 0 ] == 'O' && s[ 1 ] == 'c' && s[ 2 ] == 't' ) ? 9
-           : ( s[ 0 ] == 'N' && s[ 1 ] == 'o' && s[ 2 ] == 'v' ) ? 10
-           : ( s[ 0 ] == 'D' && s[ 1 ] == 'e' && s[ 2 ] == 'c' ) ? 11
+      return ( s == "Jan" ) ? 0
+           : ( s == "Feb" ) ? 1
+           : ( s == "Mar" ) ? 2
+           : ( s == "Apr" ) ? 3
+           : ( s == "May" ) ? 4
+           : ( s == "Jun" ) ? 5
+           : ( s == "Jul" ) ? 6
+           : ( s == "Aug" ) ? 7
+           : ( s == "Sep" ) ? 8
+           : ( s == "Oct" ) ? 9
+           : ( s == "Nov" ) ? 10
+           : ( s == "Dec" ) ? 11
            : throw "invalid month";
       // clang-format on
    }
 
-   constexpr unsigned day_cpp( const ct_string s )
+   constexpr unsigned day_cpp( const std::string_view s )
    {
       return ( ( s[ 4 ] == ' ' ) ? digit( s, 5 ) : two( s, 4 ) ) - 1;
    }
 
-   constexpr unsigned year_iso( const ct_string s )
+   constexpr unsigned year_iso( const std::string_view s )
    {
       return four( s, 0 );
    }
 
-   constexpr unsigned month_iso( const ct_string s )
+   constexpr unsigned month_iso( const std::string_view s )
    {
       return check( two( s, 5 ) - 1, 12 );
    }
@@ -99,22 +80,31 @@ namespace todo
 
    constexpr unsigned days( const unsigned y, const unsigned m )
    {
-      return ( m == 1 ) ? ( is_leap_year( y ) ? 29 : 28 ) : ( ( m == 3 || m == 5 || m == 8 || m == 10 ) ? 30 : 31 );
+      if( m == 1 ) {
+         return is_leap_year( y ) ? 29 : 28;
+      }
+      return ( m == 3 || m == 5 || m == 8 || m == 10 ) ? 30 : 31;
    }
 
-   constexpr unsigned day_iso( const ct_string s )
+   constexpr unsigned day_iso( const std::string_view s )
    {
       return check( two( s, 8 ) - 1, days( year_iso( s ), month_iso( s ) ) );
    }
 
-   constexpr unsigned total_cpp( const ct_string s )
+   constexpr unsigned total_cpp( const std::string_view s )
    {
-      return ( s.size() == 11 && s[ 3 ] == ' ' && s[ 6 ] == ' ' ) ? year_cpp( s ) * 366 + month_cpp( s ) * 31 + day_cpp( s ) : throw "invalid string";
+      if( s.size() != 11 || s[ 3 ] != ' ' || s[ 6 ] != ' ' ) {
+         throw "invalid string";
+      }
+      return ( year_cpp( s ) * 12 + month_cpp( s.substr( 0, 3 ) ) ) * 31 + day_cpp( s );
    }
 
-   constexpr unsigned total_iso( const ct_string s )
+   constexpr unsigned total_iso( const std::string_view s )
    {
-      return ( s.size() == 10 && s[ 4 ] == '-' && s[ 7 ] == '-' ) ? year_iso( s ) * 366 + month_iso( s ) * 31 + day_iso( s ) : throw "invalid string";
+      if( s.size() != 10 || s[ 4 ] != '-' || s[ 7 ] != '-' ) {
+         throw "invalid string";
+      }
+      return ( year_iso( s ) * 12 + month_iso( s ) ) * 31 + day_iso( s );
    }
 
 }  // namespace todo
